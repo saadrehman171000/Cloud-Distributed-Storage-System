@@ -16,21 +16,35 @@ spec:
       containers:
       - name: sensu-backend
         image: sensu/sensu:latest
-        command: ["sensu-backend", "start"]
-        env:
-        - name: SENSU_BACKEND_CLUSTER_ADMIN_USERNAME
-          value: "admin"
-        - name: SENSU_BACKEND_CLUSTER_ADMIN_PASSWORD
-          value: "P@ssw0rd!"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          # Install curl
+          apk add --no-cache curl
+
+          # Start backend
+          sensu-backend start &
+          sleep 10
+          sh /etc/sensu/bootstrap/init.sh
+          wait
         ports:
         - containerPort: 8080
+          name: api
         - containerPort: 8081
+          name: agent
         - containerPort: 3000
+          name: dashboard
         volumeMounts:
-        - name: sensu-backend-config
-          mountPath: /etc/sensu/backend.yml
-          subPath: backend.yml
+        - name: bootstrap
+          mountPath: /etc/sensu/bootstrap
+        - name: checks
+          mountPath: /etc/sensu/checks
       volumes:
-      - name: sensu-backend-config
+      - name: bootstrap
         configMap:
-          name: sensu-backend-config 
+          name: sensu-backend-bootstrap
+          defaultMode: 0755
+      - name: checks
+        configMap:
+          name: sensu-checks-config 

@@ -31,7 +31,54 @@ data:
 
     if __name__ == "__main__":
         check_node_health()
+
   check-pod-health.py: |
-    {{ contents of check-pod-health.py }}
+    #!/usr/bin/env python3
+    import sys
+    from kubernetes import client, config
+
+    def check_pod_health():
+        try:
+            config.load_incluster_config()
+            v1 = client.CoreV1Api()
+            pods = v1.list_namespaced_pod('cloud-storage')
+            unhealthy = 0
+            
+            for pod in pods.items:
+                if pod.status.phase != 'Running':
+                    unhealthy += 1
+                    print(f"Pod {pod.metadata.name} is in {pod.status.phase} state")
+            
+            if unhealthy > 0:
+                print(f"WARNING: {unhealthy} pods are not running")
+                sys.exit(1)
+            print("OK: All pods are running")
+            sys.exit(0)
+        except Exception as e:
+            print(f"CRITICAL: {str(e)}")
+            sys.exit(2)
+
+    if __name__ == "__main__":
+        check_pod_health()
+
   metrics-system.py: |
-    {{ contents of metrics-system.py }} 
+    #!/usr/bin/env python3
+    import sys
+    import psutil
+
+    def collect_metrics():
+        try:
+            cpu_percent = psutil.cpu_percent(interval=1)
+            memory = psutil.virtual_memory()
+            disk = psutil.disk_usage('/')
+            
+            print(f"system.cpu.usage {cpu_percent}")
+            print(f"system.memory.used_percent {memory.percent}")
+            print(f"system.disk.used_percent {disk.percent}")
+            sys.exit(0)
+        except Exception as e:
+            print(f"CRITICAL: {str(e)}")
+            sys.exit(2)
+
+    if __name__ == "__main__":
+        collect_metrics() 

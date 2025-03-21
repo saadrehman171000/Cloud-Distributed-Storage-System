@@ -24,40 +24,40 @@ spec:
       containers:
       - name: sensu-agent
         image: sensu/sensu:latest
-        command: ["/bin/sh"]
+        command: ["sensu-agent"]
         args:
-        - -ec
-        - |
-          # Debug info
-          echo "Starting setup..."
-          pwd
-          ls -la /etc/sensu/plugins/
-
-          # Install dependencies using apk (Alpine package manager)
-          apk update
-          apk add python3 py3-pip
-          pip3 install kubernetes psutil
-
-          # Make scripts executable
-          chmod +x /etc/sensu/plugins/*.py
-          ls -la /etc/sensu/plugins/
-
-          # Start agent with debug
-          echo "Starting Sensu agent..."
-          sensu-agent start \
-            --backend-url="ws://sensu-backend-service:8081" \
-            --name="${SENSU_NAME}" \
-            --namespace="cloud-storage" \
-            --subscriptions="system" \
-            --log-level="debug" \
-            --deregister="true" \
-            --keepalive-interval=5 \
-            --keepalive-timeout=15
+        - "start"
+        - "--log-level=debug"
+        - "--backend-url=ws://sensu-backend-service:8081"
+        - "--name=$(NODE_NAME)"
+        - "--namespace=cloud-storage"
+        - "--subscriptions=system"
+        - "--deregister=true"
+        - "--keepalive-interval=5"
+        - "--keepalive-timeout=15"
         env:
-        - name: SENSU_NAME
+        - name: NODE_NAME
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: PYTHONPATH
+          value: "/etc/sensu/plugins/lib"
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "sensu-agent version"
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "sensu-agent version"
+          initialDelaySeconds: 5
+          periodSeconds: 10
         volumeMounts:
         - name: plugins
           mountPath: /etc/sensu/plugins
@@ -67,8 +67,61 @@ spec:
         - name: sys
           mountPath: /host/sys
           readOnly: true
+      initContainers:
+      - name: install-plugins
+        image: alpine:latest
+        command: ["/bin/sh"]
+        args:
+        - -ec
+        - |
+          echo "Starting plugin installation..."
+          
+          # Create directory structure
+          echo "Creating directories..."
+          mkdir -p /plugins/lib /plugins/scripts
+          
+          # Copy plugin scripts from configmap
+          echo "Copying plugin scripts..."
+          ls -la /configmap/
+          cp -v /configmap/* /plugins/scripts/ || echo "Failed to copy scripts"
+          
+          # Install dependencies
+          echo "Installing dependencies..."
+          apk add --no-cache python3 py3-pip python3-dev gcc musl-dev linux-headers
+          
+          # Create and activate venv
+          echo "Setting up Python virtual environment..."
+          python3 -m venv /tmp/venv
+          . /tmp/venv/bin/activate
+          
+          # Install packages
+          echo "Installing Python packages..."
+          pip install --no-cache-dir kubernetes psutil
+          
+          # Copy installed packages
+          echo "Copying installed packages..."
+          cp -r /tmp/venv/lib/python3.12/site-packages/* /plugins/lib/
+          
+          # Make scripts executable
+          echo "Making scripts executable..."
+          chmod +x /plugins/scripts/*.py
+          
+          # Debug output
+          echo "Final contents of /plugins/scripts:"
+          ls -la /plugins/scripts/
+          echo "Final contents of /plugins/lib:"
+          ls -la /plugins/lib/
+          
+          echo "Plugin installation complete!"
+        volumeMounts:
+        - name: plugins
+          mountPath: /plugins
+        - name: plugin-scripts
+          mountPath: /configmap
       volumes:
       - name: plugins
+        emptyDir: {}
+      - name: plugin-scripts
         configMap:
           name: sensu-plugins
           defaultMode: 0755

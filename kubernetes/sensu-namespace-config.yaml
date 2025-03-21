@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensu-namespace-config
+  namespace: cloud-storage
+data:
+  namespace.json: |
+    {
+      "name": "cloud-storage",
+      "description": "Cloud Storage Monitoring Namespace"
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensu-backend-bootstrap
+  namespace: cloud-storage
+data:
+  init.sh: |
+    #!/bin/sh
+    
+    # Wait for backend to be ready
+    until curl -s http://localhost:8080/health > /dev/null; do
+      echo "Waiting for backend to be ready..."
+      sleep 5
+    done
+    
+    # Configure sensuctl
+    sensuctl configure --non-interactive \
+      --username admin \
+      --password P@ssw0rd! \
+      --url http://localhost:8080 \
+      --format json
+
+    # Create namespace if it doesn't exist
+    if ! sensuctl namespace list | grep -q "cloud-storage"; then
+      sensuctl namespace create cloud-storage
+    fi
+
+    # Create check configurations
+    for check in /etc/sensu/checks/*.json; do
+      echo "Creating check from $check"
+      sensuctl create -f "$check"
+    done 

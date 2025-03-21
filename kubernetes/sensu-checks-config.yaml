@@ -6,40 +6,56 @@ metadata:
 data:
   checks.json: |
     {
-      "checks": {
-        "node-health": {
-          "command": "check-node-health.py",
-          "interval": 10,
-          "publish": true,
-          "subscriptions": ["system"],
-          "handlers": ["default"],
-          "metadata": {
-            "name": "node-health",
-            "namespace": "cloud-storage"
-          }
-        },
-        "pod-health": {
-          "command": "check-pod-health.py",
-          "interval": 10,
-          "publish": true,
-          "subscriptions": ["system"],
-          "handlers": ["default"],
-          "metadata": {
-            "name": "pod-health",
-            "namespace": "cloud-storage"
-          }
-        },
-        "system-metrics": {
-          "command": "metrics-system.py",
-          "interval": 10,
-          "publish": true,
-          "subscriptions": ["system"],
-          "type": "metric",
-          "handlers": ["default"],
-          "metadata": {
-            "name": "system-metrics",
-            "namespace": "cloud-storage"
-          }
-        }
+      "type": "CheckConfig",
+      "api_version": "core/v2",
+      "metadata": {
+        "name": "node-health",
+        "namespace": "cloud-storage"
+      },
+      "spec": {
+        "command": "/etc/sensu/plugins/check-node-health.py",
+        "handlers": [],
+        "interval": 60,
+        "publish": true,
+        "subscriptions": ["system"],
+        "timeout": 30,
+        "runtime_assets": []
+      }
+    }
+  pod-health.json: |
+    {
+      "type": "CheckConfig",
+      "api_version": "core/v2",
+      "metadata": {
+        "name": "pod-health",
+        "namespace": "cloud-storage"
+      },
+      "spec": {
+        "command": "/etc/sensu/plugins/check-pod-health.py",
+        "handlers": [],
+        "interval": 30,
+        "publish": true,
+        "subscriptions": ["system"],
+        "timeout": 30,
+        "runtime_assets": []
+      }
+    }
+  metrics.json: |
+    {
+      "type": "CheckConfig",
+      "api_version": "core/v2",
+      "metadata": {
+        "name": "system-metrics",
+        "namespace": "cloud-storage"
+      },
+      "spec": {
+        "command": "/etc/sensu/plugins/metrics-system.py",
+        "handlers": [],
+        "interval": 15,
+        "publish": true,
+        "subscriptions": ["system"],
+        "timeout": 30,
+        "runtime_assets": [],
+        "output_metric_format": "nagios_perfdata"
       }
     } 
