@@ -2,12 +2,25 @@ import numpy as np
 from PIL import Image
 import os
 import logging
+from prometheus_client import Counter, Histogram, start_http_server
 
 class RAIDManager:
     def __init__(self, storage_path):
         self.storage_path = storage_path
         os.makedirs(storage_path, exist_ok=True)
         self.logger = logging.getLogger(__name__)
+        
+        # Metrics
+        self.recovery_time = Histogram(
+            'raid_recovery_duration_seconds',
+            'Time spent recovering data',
+            ['type']
+        )
+        self.recovery_count = Counter(
+            'raid_recovery_total',
+            'Number of recovery operations',
+            ['type', 'success']
+        )
         
     def segment_image(self, image_path):
         """Split image into R1, R2, R3 segments"""
@@ -66,6 +79,7 @@ class RAIDManager:
         
         return P, Q
         
+    @recovery_time.time()
     def recover_raid5(self, available_segments, parity):
         """Recover data using RAID 5"""
         if len(available_segments) < 2:
@@ -79,8 +93,10 @@ class RAIDManager:
         # Return all segments in correct order
         segments = list(available_segments)
         segments.append(recovered)
+        self.recovery_count.labels(type='raid5', success='true').inc()
         return segments
         
+    @recovery_time.time()
     def recover_raid6(self, available_segments, parities):
         """Recover data using RAID 6"""
         P, Q = parities
@@ -119,6 +135,7 @@ class RAIDManager:
             if np.abs(P_verify_alt - P).mean() < np.abs(np.bitwise_xor(np.bitwise_xor(R1, R2), S) - P).mean():
                 recovered[0] = R1_alt
         
+        self.recovery_count.labels(type='raid6', success='true').inc()
         return recovered
 
     def reconstruct_image(self, segments):

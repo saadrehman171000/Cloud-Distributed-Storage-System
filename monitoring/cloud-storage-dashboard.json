@@ -1,0 +1,30 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Cloud Storage Metrics",
+    "panels": [
+      {
+        "title": "Storage Usage",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "node_filesystem_avail_bytes",
+            "legendFormat": "{{pod}}"
+          }
+        ]
+      },
+      {
+        "title": "RAID Recovery Time",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "raid_recovery_duration_seconds",
+            "legendFormat": "{{type}}"
+          }
+        ]
+      }
+    ]
+  }
+} 

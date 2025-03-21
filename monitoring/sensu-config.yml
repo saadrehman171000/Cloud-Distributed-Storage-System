@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensu-checks
+  namespace: monitoring
+data:
+  checks.yml: |
+    ---
+    type: CheckConfig
+    api_version: core/v2
+    metadata:
+      name: cloud-storage-health
+      namespace: default
+    spec:
+      command: check-http -u http://localhost:9090/metrics
+      subscriptions:
+        - system
+      handlers:
+        - slack
+      interval: 30
+      publish: true 

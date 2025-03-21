@@ -1,0 +1,155 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-storage
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-storage
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring-dashboard
+  namespace: monitoring
+spec:
+  selector:
+    app: monitoring
+  ports:
+  - name: grafana
+    port: 3000
+    targetPort: 3001
+    nodePort: 31000
+  - name: prometheus
+    port: 9090
+    targetPort: 9090
+    nodePort: 31001
+  - name: sensu
+    port: 8080
+    targetPort: 8080
+    nodePort: 31002
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring-stack
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitoring
+  template:
+    metadata:
+      labels:
+        app: monitoring
+    spec:
+      serviceAccountName: monitoring
+      securityContext:
+        fsGroup: 472
+      containers:
+      - name: grafana
+        image: grafana/grafana:latest
+        securityContext:
+          runAsUser: 472
+          runAsGroup: 472
+        ports:
+        - containerPort: 3001
+        env:
+        - name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "true"
+        - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+          value: "Admin"
+        - name: GF_SECURITY_ALLOW_EMBEDDING
+          value: "true"
+        - name: GF_SERVER_HTTP_PORT
+          value: "3001"
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+      - name: prometheus
+        image: prom/prometheus:latest
+        securityContext:
+          runAsUser: 65534
+          runAsGroup: 65534
+          runAsNonRoot: true
+        args:
+        - --storage.tsdb.path=/prometheus
+        - --storage.tsdb.retention.time=15d
+        - --config.file=/etc/prometheus/prometheus.yml
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+        - name: prometheus-storage
+          mountPath: /prometheus
+      - name: sensu
+        image: sensu/sensu:latest
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+        command: ["/opt/sensu/bin/sensu-backend"]
+        args: ["start"]
+        env:
+        - name: SENSU_BACKEND_CLUSTER_ADMIN_USERNAME
+          value: "admin"
+        - name: SENSU_BACKEND_CLUSTER_ADMIN_PASSWORD
+          value: "P@ssw0rd"
+        - name: SENSU_BACKEND_API_URL
+          value: "http://localhost:8080"
+        - name: SENSU_BACKEND_CACHE_DIR
+          value: "/var/lib/sensu/cache"
+        ports:
+        - containerPort: 8080
+          name: api
+        - containerPort: 8081
+          name: dashboard
+        volumeMounts:
+        - name: sensu-config
+          mountPath: /etc/sensu
+        - name: sensu-data
+          mountPath: /var/lib/sensu
+        - name: sensu-cache
+          mountPath: /var/cache/sensu
+      - name: node-exporter
+        image: prom/node-exporter:latest
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+        ports:
+        - containerPort: 9100
+      volumes:
+      - name: grafana-storage
+        persistentVolumeClaim:
+          claimName: grafana-storage
+      - name: prometheus-storage
+        persistentVolumeClaim:
+          claimName: prometheus-storage
+      - name: prometheus-config
+        configMap:
+          name: prometheus-config
+      - name: sensu-config
+        configMap:
+          name: sensu-checks
+      - name: sensu-data
+        persistentVolumeClaim:
+          claimName: sensu-data
+      - name: sensu-cache
+        emptyDir: {} 

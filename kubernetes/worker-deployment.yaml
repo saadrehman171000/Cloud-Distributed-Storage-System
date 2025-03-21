@@ -4,7 +4,7 @@ metadata:
   name: worker-deployment
   namespace: cloud-storage
 spec:
-  replicas: 5  # 3 for data, 2 for parity
+  replicas: 3  # Reduce replicas to match available resources
   selector:
     matchLabels:
       app: worker
@@ -14,22 +14,26 @@ spec:
       labels:
         app: worker
         role: worker
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
     spec:
       containers:
       - name: worker
         image: python:3.9-slim
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "128Mi"
+            cpu: "100m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "256Mi"
+            cpu: "200m"
+        ports:
+        - containerPort: 9090
+          name: metrics
         volumeMounts:
         - name: storage
           mountPath: /storage
-        - name: shared-data
-          mountPath: /shared
       volumes:
       - name: storage
         emptyDir: {}
