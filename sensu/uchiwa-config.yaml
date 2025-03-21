@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: uchiwa-config
+data:
+  config.json: |
+    {
+      "sensu": [
+        {
+          "name": "Site 1",
+          "host": "sensu-backend-service.cloud-storage.svc.cluster.local",
+          "port": 8080,
+          "timeout": 10
+        }
+      ],
+      "uchiwa": {
+        "port": 3000,
+        "user": "admin",
+        "pass": "admin",
+        "refresh": 10
+      }
+    } 

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sensu-backend
+spec:
+  containers:
+  - name: sensu-backend
+    image: sensu/sensu:latest
+    ports:
+    - containerPort: 8080
+    - containerPort: 8081
+    env:
+    - name: SENSU_BACKEND_CLUSTER_ADMIN_USERNAME
+      value: admin
+    - name: SENSU_BACKEND_CLUSTER_ADMIN_PASSWORD
+      value: P@ssw0rd 

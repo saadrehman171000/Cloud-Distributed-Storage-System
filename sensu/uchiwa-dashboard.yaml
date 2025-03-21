@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: uchiwa-dashboard
+spec:
+  type: NodePort
+  ports:
+  - port: 3000
+    targetPort: 3000
+    nodePort: 30000
+  selector:
+    app: uchiwa
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uchiwa-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: uchiwa
+  template:
+    metadata:
+      labels:
+        app: uchiwa
+    spec:
+      containers:
+      - name: uchiwa
+        image: uchiwa/uchiwa
+        ports:
+        - containerPort: 3000 
