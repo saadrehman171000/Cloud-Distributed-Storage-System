@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensu-agent-config
+  namespace: cloud-storage
+data:
+  agent.yml: |
+    backend-url:
+      - "ws://sensu-backend-service:8081"
+    name: "${HOSTNAME}"
+    namespace: "cloud-storage"
+    subscriptions:
+      - "system"
+    log-level: "debug"
+    keepalive-interval: 5
+    keepalive-timeout: 15
+    deregister: true
+    deregistration-handler: "deregister"
+    statsd-event-handlers:
+      - "default"
+    api-host: "127.0.0.1"
+    api-port: 3031
+    disable-api: false 

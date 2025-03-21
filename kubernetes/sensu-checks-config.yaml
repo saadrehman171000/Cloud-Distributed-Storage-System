@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensu-checks-config
+  namespace: cloud-storage
+data:
+  checks.json: |
+    {
+      "checks": {
+        "node-health": {
+          "command": "check-node-health.py",
+          "interval": 10,
+          "publish": true,
+          "subscriptions": ["system"],
+          "handlers": ["default"],
+          "metadata": {
+            "name": "node-health",
+            "namespace": "cloud-storage"
+          }
+        },
+        "pod-health": {
+          "command": "check-pod-health.py",
+          "interval": 10,
+          "publish": true,
+          "subscriptions": ["system"],
+          "handlers": ["default"],
+          "metadata": {
+            "name": "pod-health",
+            "namespace": "cloud-storage"
+          }
+        },
+        "system-metrics": {
+          "command": "metrics-system.py",
+          "interval": 10,
+          "publish": true,
+          "subscriptions": ["system"],
+          "type": "metric",
+          "handlers": ["default"],
+          "metadata": {
+            "name": "system-metrics",
+            "namespace": "cloud-storage"
+          }
+        }
+      }
+    } 

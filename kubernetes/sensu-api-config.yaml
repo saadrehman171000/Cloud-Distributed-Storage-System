@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensu-api-config
+  namespace: cloud-storage
+data:
+  api.yml: |
+    username: admin
+    password: P@ssw0rd!
+    api-url: http://sensu-backend-service:8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sensu-backend-service
+  namespace: cloud-storage
+spec:
+  selector:
+    app: sensu-backend
+  ports:
+  - name: api
+    port: 8080
+    targetPort: 8080
+  - name: agent
+    port: 8081
+    targetPort: 8081
+  - name: dashboard
+    port: 3000
+    targetPort: 3000 

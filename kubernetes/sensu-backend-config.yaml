@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensu-backend-config
+  namespace: cloud-storage
+data:
+  backend.yml: |
+    state-dir: "/var/lib/sensu/sensu-backend"
+    api-url: "http://localhost:8080"
+    dashboard-host: "0.0.0.0"
+    dashboard-port: 3000
+    debug: true
+    agent-host: "0.0.0.0"
+    agent-port: 8081
+    etcd-listen-client-urls: "http://0.0.0.0:2379"
+    etcd-advertise-client-urls: "http://localhost:2379"
+    deregistration-handler: "deregister"
+    log-level: "debug"
+    api-listen-address: "[::]:8080"
+    dashboard-cert-file: ""
+    dashboard-key-file: ""
+    namespaces:
+      - cloud-storage 

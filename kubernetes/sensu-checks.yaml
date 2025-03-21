@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensu-checks
+  namespace: cloud-storage
+data:
+  checks.json: |
+    {
+      "checks": {
+        "node-health": {
+          "command": "/etc/sensu/plugins/check-node-health.py",
+          "interval": 30,
+          "subscribers": ["nodes"],
+          "handlers": ["default"],
+          "metadata": {
+            "name": "Node Health Check",
+            "namespace": "cloud-storage"
+          }
+        },
+        "pod-health": {
+          "command": "/etc/sensu/plugins/check-pod-health.py",
+          "interval": 30,
+          "subscribers": ["nodes"],
+          "handlers": ["default"],
+          "metadata": {
+            "name": "Pod Health Check",
+            "namespace": "cloud-storage"
+          }
+        },
+        "raid-health": {
+          "command": "/etc/sensu/plugins/check-raid-health.py",
+          "interval": 60,
+          "subscribers": ["storage"],
+          "handlers": ["default"],
+          "metadata": {
+            "name": "RAID Health Check",
+            "namespace": "cloud-storage"
+          }
+        }
+      }
+    } 

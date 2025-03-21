@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: sensu-agent
+  namespace: cloud-storage
+  labels:
+    app: sensu-agent
+    role: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: sensu-agent
+  template:
+    metadata:
+      labels:
+        app: sensu-agent
+        role: monitoring
+    spec:
+      serviceAccountName: sensu-agent
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        runAsUser: 0
+      containers:
+      - name: sensu-agent
+        image: sensu/sensu:latest
+        command: ["/bin/sh"]
+        args:
+        - -ec
+        - |
+          # Debug info
+          echo "Starting setup..."
+          pwd
+          ls -la /etc/sensu/plugins/
+
+          # Install dependencies using apk (Alpine package manager)
+          apk update
+          apk add python3 py3-pip
+          pip3 install kubernetes psutil
+
+          # Make scripts executable
+          chmod +x /etc/sensu/plugins/*.py
+          ls -la /etc/sensu/plugins/
+
+          # Start agent with debug
+          echo "Starting Sensu agent..."
+          sensu-agent start \
+            --backend-url="ws://sensu-backend-service:8081" \
+            --name="${SENSU_NAME}" \
+            --namespace="cloud-storage" \
+            --subscriptions="system" \
+            --log-level="debug" \
+            --deregister="true" \
+            --keepalive-interval=5 \
+            --keepalive-timeout=15
+        env:
+        - name: SENSU_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: plugins
+          mountPath: /etc/sensu/plugins
+        - name: proc
+          mountPath: /host/proc
+          readOnly: true
+        - name: sys
+          mountPath: /host/sys
+          readOnly: true
+      volumes:
+      - name: plugins
+        configMap:
+          name: sensu-plugins
+          defaultMode: 0755
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: sys
+        hostPath:
+          path: /sys 

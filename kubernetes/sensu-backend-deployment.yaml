@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sensu-backend
+  namespace: cloud-storage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sensu-backend
+  template:
+    metadata:
+      labels:
+        app: sensu-backend
+    spec:
+      containers:
+      - name: sensu-backend
+        image: sensu/sensu:latest
+        command: ["sensu-backend", "start"]
+        env:
+        - name: SENSU_BACKEND_CLUSTER_ADMIN_USERNAME
+          value: "admin"
+        - name: SENSU_BACKEND_CLUSTER_ADMIN_PASSWORD
+          value: "P@ssw0rd!"
+        ports:
+        - containerPort: 8080
+        - containerPort: 8081
+        - containerPort: 3000
+        volumeMounts:
+        - name: sensu-backend-config
+          mountPath: /etc/sensu/backend.yml
+          subPath: backend.yml
+      volumes:
+      - name: sensu-backend-config
+        configMap:
+          name: sensu-backend-config 

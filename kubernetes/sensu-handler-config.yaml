@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensu-handler-config
+  namespace: cloud-storage
+data:
+  handlers.json: |
+    {
+      "handlers": {
+        "default": {
+          "type": "pipe",
+          "command": "echo 'Event handled'"
+        },
+        "slack": {
+          "type": "pipe",
+          "command": "handler-slack --webhook-url ${SLACK_WEBHOOK_URL}"
+        }
+      }
+    } 
