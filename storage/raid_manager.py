@@ -55,11 +55,14 @@ class RAIDManager:
         # P parity - simple XOR
         P = np.bitwise_xor(np.bitwise_xor(R1, R2), R3)
         
-        # Q parity - diagonal XOR with rotations
-        Q1 = np.roll(R1, 1, axis=0)
-        Q2 = np.roll(R2, 2, axis=0)
-        Q3 = np.roll(R3, 3, axis=0)
-        Q = np.bitwise_xor(np.bitwise_xor(Q1, Q2), Q3)
+        # Q parity - shifted XOR
+        Q = np.bitwise_xor(
+            np.bitwise_xor(
+                np.roll(R1, 1, axis=0),  # Shift R1 down
+                np.roll(R2, -1, axis=0)  # Shift R2 up
+            ),
+            R3  # Keep R3 as is
+        )
         
         return P, Q
         
@@ -86,24 +89,37 @@ class RAIDManager:
         
         S = available_segments[0]  # Known segment
         
-        # First recover R1 using P and S
+        # First recover R1 using P parity
         R1 = np.bitwise_xor(P, np.bitwise_xor(S, Q))
         
-        # Recover R2 using diagonal parity
-        Q1 = np.roll(R1, 1, axis=0)
-        Q3 = np.roll(S, 3, axis=0)
-        Q2 = np.bitwise_xor(Q, np.bitwise_xor(Q1, Q3))
-        R2 = np.roll(Q2, -2, axis=0)  # Reverse the roll
+        # Then recover R2 using P parity
+        R2 = np.bitwise_xor(P, np.bitwise_xor(R1, S))
         
-        # Verify recovery using P parity
-        P_verify = np.bitwise_xor(np.bitwise_xor(R1, R2), S)
-        if not np.array_equal(P_verify, P):
-            self.logger.warning("RAID 6 recovery verification failed")
-            # Try alternative recovery
-            R2 = np.bitwise_xor(P, np.bitwise_xor(R1, S))
+        # Verify basic recovery
+        recovered = [R1, R2, S]
         
-        # Return segments in order
-        return [R1, R2, S]
+        # Try to improve recovery using Q parity if needed
+        Q_verify = np.bitwise_xor(
+            np.bitwise_xor(
+                np.roll(R1, 1, axis=0),
+                np.roll(R2, -1, axis=0)
+            ),
+            S
+        )
+        
+        if not np.array_equal(Q_verify, Q):
+            self.logger.warning("Q parity verification failed")
+            # Try alternative R1 using Q parity
+            R1_alt = np.roll(
+                np.bitwise_xor(Q, np.bitwise_xor(np.roll(R2, -1, axis=0), S)),
+                -1, axis=0
+            )
+            # Use R1_alt if it improves P parity
+            P_verify_alt = np.bitwise_xor(np.bitwise_xor(R1_alt, R2), S)
+            if np.abs(P_verify_alt - P).mean() < np.abs(np.bitwise_xor(np.bitwise_xor(R1, R2), S) - P).mean():
+                recovered[0] = R1_alt
+        
+        return recovered
 
     def reconstruct_image(self, segments):
         """Reconstruct image from segments"""
@@ -153,4 +169,4 @@ class RAIDManager:
             return True
         except Exception as e:
             self.logger.error(f"Failed to save image: {e}")
-            return False 
+            return False
