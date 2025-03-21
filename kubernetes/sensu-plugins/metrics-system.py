@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 import psutil
-import sys
+import time
 
-def collect_metrics():
-    try:
-        cpu_percent = psutil.cpu_percent(interval=1)
-        memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
-        
-        print(f"system.cpu.usage {cpu_percent}")
-        print(f"system.memory.used_percent {memory.percent}")
-        print(f"system.disk.used_percent {disk.percent}")
-        sys.exit(0)
-    except Exception as e:
-        print(f"CRITICAL: {str(e)}")
-        sys.exit(2)
+def get_system_metrics():
+    cpu_percent = psutil.cpu_percent(interval=1)
+    memory = psutil.virtual_memory()
+    disk = psutil.disk_usage('/')
+    
+    # Format metrics in Nagios perfdata format (without % signs)
+    metrics = [
+        f"cpu_percent={cpu_percent}",
+        f"memory_percent={memory.percent}",
+        f"disk_percent={disk.percent}"
+    ]
+    
+    # Print check output in Nagios format
+    # Format: STATUS - Message | metric1=value1 metric2=value2
+    print("OK - System metrics collected | " + " ".join(metrics))
 
 if __name__ == "__main__":
-    collect_metrics() 
+    get_system_metrics() 

@@ -69,50 +69,36 @@ spec:
           readOnly: true
       initContainers:
       - name: install-plugins
-        image: alpine:latest
+        image: python:3.9-alpine
         command: ["/bin/sh"]
         args:
-        - -ec
+        - -exc
         - |
-          echo "Starting plugin installation..."
-          
-          # Create directory structure
-          echo "Creating directories..."
+          # Install build dependencies
+          apk add --no-cache gcc musl-dev linux-headers
+
+          # Create directories
           mkdir -p /plugins/lib /plugins/scripts
           
-          # Copy plugin scripts from configmap
-          echo "Copying plugin scripts..."
-          ls -la /configmap/
-          cp -v /configmap/* /plugins/scripts/ || echo "Failed to copy scripts"
+          # Debug
+          echo "Current directory:"
+          pwd
+          echo "ConfigMap contents:"
+          ls -la /configmap
           
-          # Install dependencies
-          echo "Installing dependencies..."
-          apk add --no-cache python3 py3-pip python3-dev gcc musl-dev linux-headers
-          
-          # Create and activate venv
-          echo "Setting up Python virtual environment..."
-          python3 -m venv /tmp/venv
-          . /tmp/venv/bin/activate
-          
-          # Install packages
-          echo "Installing Python packages..."
-          pip install --no-cache-dir kubernetes psutil
-          
-          # Copy installed packages
-          echo "Copying installed packages..."
-          cp -r /tmp/venv/lib/python3.12/site-packages/* /plugins/lib/
-          
-          # Make scripts executable
-          echo "Making scripts executable..."
+          # Copy scripts
+          cp -v /configmap/* /plugins/scripts/
           chmod +x /plugins/scripts/*.py
           
-          # Debug output
-          echo "Final contents of /plugins/scripts:"
-          ls -la /plugins/scripts/
-          echo "Final contents of /plugins/lib:"
-          ls -la /plugins/lib/
+          # Install Python packages
+          pip install --no-cache-dir --target=/plugins/lib psutil
+          pip install --no-cache-dir --target=/plugins/lib kubernetes
           
-          echo "Plugin installation complete!"
+          # Verify installation
+          echo "Installed packages:"
+          pip list
+          echo "Scripts directory:"
+          ls -la /plugins/scripts
         volumeMounts:
         - name: plugins
           mountPath: /plugins
