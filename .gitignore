@@ -37,6 +37,8 @@ kubeconfig
 
 # Project specific
 test_results/
+test_storage/
+*.npy
 *.log
 .env
 node_modules/
@@ -53,4 +55,8 @@ node_modules/
 *.ipynb
 
 # Documentation
-docs/_build/ 
+docs/_build/
+
+# OS
+.DS_Store
+Thumbs.db 

@@ -5,6 +5,8 @@ import logging
 import threading
 import queue
 from storage.raid_manager import RAIDManager
+import os
+import numpy as np
 
 class NodeManager:
     def __init__(self, namespace="cloud-storage"):
@@ -13,6 +15,10 @@ class NodeManager:
         self.v1 = client.CoreV1Api()
         self.apps_v1 = client.AppsV1Api()
         self.namespace = namespace
+        
+        # Add storage path
+        self.storage_path = "/storage"
+        os.makedirs(self.storage_path, exist_ok=True)
         
         # Setup logging
         logging.basicConfig(level=logging.INFO)
@@ -23,7 +29,7 @@ class NodeManager:
         self.max_concurrent_recoveries = 1
         self.recovering_nodes = set()
         
-        self.raid_manager = RAIDManager("/storage")
+        self.raid_manager = RAIDManager(self.storage_path)
     
     def get_worker_pods(self):
         """Get all worker pods"""
@@ -133,11 +139,23 @@ class NodeManager:
     def simulate_node_failure(self, node_name):
         """Simulate a node failure and trigger recovery"""
         try:
+            # Get pod name from node
+            pods = self.v1.list_namespaced_pod(
+                namespace=self.namespace,
+                label_selector=f"role=worker"
+            ).items
+            
+            if not pods:
+                raise ValueError("No worker pods found")
+            
+            pod_name = pods[0].metadata.name
+            self.logger.info(f"Selected pod {pod_name} for failure simulation")
+            
             # Restrict access to the node
             self.restrict_node_access(node_name)
             
-            # Shutdown the node
-            self.shutdown_node(node_name)
+            # Shutdown the pod
+            self.shutdown_node(pod_name)
             
             # Start recovery process
             self.recover_node_data(node_name)
@@ -192,4 +210,87 @@ class NodeManager:
             return True
         except Exception as e:
             self.logger.error(f"Failed to recover node data: {e}")
+            return False 
+
+    def get_node_storage(self, node_name):
+        """Get storage information for a node"""
+        try:
+            # Get node's storage path
+            storage_path = os.path.join(self.storage_path, node_name)
+            
+            # Get list of images stored on the node
+            images = []
+            if os.path.exists(storage_path):
+                for root, _, files in os.walk(storage_path):
+                    images.extend([os.path.join(root, f) for f in files if f.endswith(('.jpg', '.png'))])
+            
+            return {
+                'path': storage_path,
+                'images': images
+            }
+        except Exception as e:
+            self.logger.error(f"Failed to get node storage info: {e}")
+            return None
+
+    def get_available_segments(self, image_path):
+        """Get available image segments from other nodes"""
+        try:
+            segments = []
+            image_name = os.path.basename(image_path)
+            
+            # Check each node for segments
+            for node in self.get_worker_pods():
+                node_storage = self.get_node_storage(node.metadata.name)
+                if node_storage:
+                    segment_path = os.path.join(node_storage['path'], f"segment_{image_name}")
+                    if os.path.exists(segment_path):
+                        segments.append(np.load(segment_path))
+            
+            return segments
+        except Exception as e:
+            self.logger.error(f"Failed to get available segments: {e}")
+            return []
+
+    def get_parity(self, image_path):
+        """Get RAID 5 parity for an image"""
+        try:
+            image_name = os.path.basename(image_path)
+            parity_path = os.path.join(self.storage_path, 'parity', f"parity5_{image_name}.npy")
+            if os.path.exists(parity_path):
+                return np.load(parity_path)
+            return None
+        except Exception as e:
+            self.logger.error(f"Failed to get parity: {e}")
+            return None
+
+    def get_parities(self, image_path):
+        """Get RAID 6 parities for an image"""
+        try:
+            image_name = os.path.basename(image_path)
+            parity_path = os.path.join(self.storage_path, 'parity')
+            p1_path = os.path.join(parity_path, f"parity6_p_{image_name}.npy")
+            p2_path = os.path.join(parity_path, f"parity6_q_{image_name}.npy")
+            
+            if os.path.exists(p1_path) and os.path.exists(p2_path):
+                return np.load(p1_path), np.load(p2_path)
+            return None, None
+        except Exception as e:
+            self.logger.error(f"Failed to get parities: {e}")
+            return None, None
+
+    def save_recovered_data(self, node_name, image_path, recovered_data):
+        """Save recovered data back to node"""
+        try:
+            # Create node storage directory
+            node_path = os.path.join(self.storage_path, node_name)
+            os.makedirs(node_path, exist_ok=True)
+            
+            # Save recovered data
+            output_path = os.path.join(node_path, os.path.basename(image_path))
+            np.save(output_path, recovered_data)
+            
+            self.logger.info(f"Saved recovered data to {output_path}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to save recovered data: {e}")
             return False 

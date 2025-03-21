@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-deployment
+  namespace: cloud-storage
+spec:
+  replicas: 5  # 3 for data, 2 for parity
+  selector:
+    matchLabels:
+      app: worker
+      role: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+        role: worker
+    spec:
+      containers:
+      - name: worker
+        image: python:3.9-slim
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: storage
+          mountPath: /storage
+        - name: shared-data
+          mountPath: /shared
+      volumes:
+      - name: storage
+        emptyDir: {}
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: shared-storage-claim 

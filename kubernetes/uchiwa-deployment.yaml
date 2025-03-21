@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uchiwa-dashboard
+  namespace: cloud-storage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: uchiwa
+  template:
+    metadata:
+      labels:
+        app: uchiwa
+    spec:
+      containers:
+      - name: uchiwa
+        image: uchiwa/uchiwa
+        ports:
+        - containerPort: 3000
+        env:
+        - name: UCHIWA_CONFIG
+          value: /config/config.json
+        volumeMounts:
+        - name: config
+          mountPath: /config
+      volumes:
+      - name: config
+        configMap:
+          name: uchiwa-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: uchiwa-service
+  namespace: cloud-storage
+spec:
+  selector:
+    app: uchiwa
+  ports:
+  - port: 3000
+    targetPort: 3000
+  type: NodePort
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: uchiwa-config
+  namespace: cloud-storage
+data:
+  config.json: |
+    {
+      "sensu": [
+        {
+          "name": "Sensu",
+          "host": "sensu-backend-service",
+          "port": 8080,
+          "timeout": 10
+        }
+      ],
+      "uchiwa": {
+        "host": "0.0.0.0",
+        "port": 3000,
+        "refresh": 10
+      }
+    } 
