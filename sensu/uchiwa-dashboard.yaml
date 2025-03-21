@@ -1,20 +1,8 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: uchiwa-dashboard
-spec:
-  type: NodePort
-  ports:
-  - port: 3000
-    targetPort: 3000
-    nodePort: 30000
-  selector:
-    app: uchiwa
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: uchiwa-dashboard
+  namespace: cloud-storage
 spec:
   replicas: 1
   selector:
@@ -29,4 +17,27 @@ spec:
       - name: uchiwa
         image: uchiwa/uchiwa
         ports:
-        - containerPort: 3000 
+        - containerPort: 3000
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config/config.json
+          subPath: config.json
+      volumes:
+      - name: config-volume
+        configMap:
+          name: uchiwa-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: uchiwa-dashboard
+  namespace: cloud-storage
+spec:
+  type: NodePort
+  ports:
+  - port: 3000
+    targetPort: 3000
+    nodePort: 30001
+  selector:
+    app: uchiwa 

@@ -1,7 +1,10 @@
-from scripts.node_manager import NodeManager
-from storage.raid_tester import RAIDTester
-import time
 import logging
+import threading
+import time
+from scripts.node_monitor import NodeMonitor
+from scripts.node_manager import NodeManager
+from scripts.performance_monitor import PerformanceMonitor
+from storage.raid_tester import RAIDTester
 
 def main():
     # Setup logging
@@ -9,21 +12,28 @@ def main():
     logger = logging.getLogger(__name__)
     
     # Initialize components
+    node_monitor = NodeMonitor()
     node_manager = NodeManager()
     raid_tester = RAIDTester()
+    perf_monitor = PerformanceMonitor()
     
-    # Test node failure and recovery
+    # Start monitoring threads
+    threading.Thread(target=node_monitor.monitor_nodes, daemon=True).start()
+    threading.Thread(target=perf_monitor.collect_metrics, daemon=True).start()
+    
+    # Run tests
     logger.info("Testing node failure and recovery...")
-    node_manager.test_node_failure_recovery()
+    node_manager.test_failure_recovery()
     
-    # Test RAID implementation
     logger.info("Testing RAID implementation...")
-    results = raid_tester.run_tests()
+    raid_tester.test_all_images()
     
-    # Print results
-    logger.info("Test Results:")
-    logger.info(f"RAID 5 - Success: {results['raid5']['success']}, Failed: {results['raid5']['failed']}")
-    logger.info(f"RAID 6 - Success: {results['raid6']['success']}, Failed: {results['raid6']['failed']}")
+    # Keep main thread running
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        logger.info("Shutting down...")
 
 if __name__ == "__main__":
     main() 

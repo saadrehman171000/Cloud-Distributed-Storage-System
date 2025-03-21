@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alerts
+  namespace: cloud-storage
+data:
+  alerts.yml: |
+    groups:
+    - name: cloud-storage
+      rules:
+      - alert: NodeDown
+        expr: node_status == 0
+        for: 5m
+        labels:
+          severity: critical
+      - alert: PodFailure
+        expr: pod_status == 0
+        for: 2m
+        labels:
+          severity: warning 

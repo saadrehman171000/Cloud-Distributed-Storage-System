@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensu-agent-config
+  namespace: cloud-storage
+data:
+  agent.yml: |
+    backend-url:
+      - "ws://sensu-backend-service:8081"
+    subscriptions:
+      - "nodes"
+    annotations:
+      environment: "production"
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: sensu-agent
+  namespace: cloud-storage
+spec:
+  selector:
+    matchLabels:
+      app: sensu-agent
+  template:
+    metadata:
+      labels:
+        app: sensu-agent
+    spec:
+      containers:
+      - name: sensu-agent
+        image: sensu/sensu:latest
+        command: ["sensu-agent", "start"]
+        env:
+        - name: SENSU_BACKEND_URL
+          value: "ws://sensu-backend-service:8081"
+        - name: SENSU_NAMESPACE
+          value: "cloud-storage"
+        - name: SENSU_SUBSCRIPTIONS
+          value: "nodes" 

@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ssh-config
+  namespace: cloud-storage
 data:
   sshd_config: |
     Port 22
@@ -13,6 +14,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: ssh-access
+  namespace: cloud-storage
 spec:
   selector:
     matchLabels:
@@ -22,15 +24,20 @@ spec:
       labels:
         app: ssh-access
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: role
+                operator: In
+                values:
+                - worker
+                - master
       containers:
-      - name: ssh-server
-        image: linuxserver/openssh-server
-        ports:
-        - containerPort: 22
-        volumeMounts:
-        - name: ssh-config
-          mountPath: /etc/ssh/sshd_config
-          subPath: sshd_config
+      - name: ssh-container
+        image: alpine:latest
+        command: ["/bin/sh", "-c", "while true; do sleep 30; done"]
       volumes:
       - name: ssh-config
         configMap:

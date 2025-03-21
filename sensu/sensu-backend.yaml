@@ -1,16 +1,38 @@
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: sensu-backend
+  namespace: cloud-storage
 spec:
-  containers:
-  - name: sensu-backend
-    image: sensu/sensu:latest
-    ports:
-    - containerPort: 8080
-    - containerPort: 8081
-    env:
-    - name: SENSU_BACKEND_CLUSTER_ADMIN_USERNAME
-      value: admin
-    - name: SENSU_BACKEND_CLUSTER_ADMIN_PASSWORD
-      value: P@ssw0rd 
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sensu-backend
+  template:
+    metadata:
+      labels:
+        app: sensu-backend
+    spec:
+      containers:
+      - name: sensu-backend
+        image: sensu/sensu:latest
+        command: ["sensu-backend", "start"]
+        ports:
+        - containerPort: 8080
+          name: api
+        - containerPort: 8081
+          name: agent
+        env:
+        - name: SENSU_BACKEND_CLUSTER_ADMIN_USERNAME
+          value: "admin"
+        - name: SENSU_BACKEND_CLUSTER_ADMIN_PASSWORD
+          value: "P@ssw0rd"
+        - name: SENSU_BACKEND_API_URL
+          value: "http://localhost:8080"
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "250m"
+            memory: "256Mi" 
