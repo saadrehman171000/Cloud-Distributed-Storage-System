@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring-dashboard
+  namespace: monitoring
+spec:
+  selector:
+    app: monitoring
+  ports:
+  - name: grafana
+    port: 3001
+    targetPort: 3001
+    nodePort: 31000
+  - name: prometheus
+    port: 9090
+    targetPort: 9090
+    nodePort: 31001
+  - name: sensu-api
+    port: 8080
+    targetPort: 8080
+    nodePort: 31002
+  - name: sensu-web
+    port: 3000
+    targetPort: 3000
+    nodePort: 31003
+  type: NodePort 

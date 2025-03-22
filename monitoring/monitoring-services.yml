@@ -23,6 +23,18 @@ spec:
       storage: 2Gi
 ---
 apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sensu-data
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: monitoring-dashboard
@@ -44,9 +56,17 @@ spec:
     targetPort: 8080
     nodePort: 31002
   - name: sensu-web
-    port: 8081
-    targetPort: 8081
+    port: 3000
+    targetPort: 3000
     nodePort: 31003
+  - name: sensu-etcd
+    port: 2379
+    targetPort: 2379
+    nodePort: 31004
+  - name: sensu-peer
+    port: 2380
+    targetPort: 2380
+    nodePort: 31005
   type: NodePort
 ---
 apiVersion: apps/v1
@@ -110,34 +130,36 @@ spec:
           runAsUser: 1000
           runAsGroup: 1000
         command: ["/opt/sensu/bin/sensu-backend"]
-        args: ["start"]
+        args: 
+        - "start"
+        - "--state-dir=/var/lib/sensu"
+        - "--log-level=debug"
+        - "--api-listen-address=0.0.0.0:8080"
+        - "--dashboard-host=0.0.0.0"
+        - "--dashboard-port=3000"
+        - "--etcd-advertise-client-urls=http://localhost:2379"
+        - "--etcd-listen-client-urls=http://0.0.0.0:2379"
+        - "--etcd-initial-cluster=default=http://localhost:2380"
+        - "--etcd-initial-advertise-peer-urls=http://localhost:2380"
+        - "--etcd-listen-peer-urls=http://0.0.0.0:2380"
+        - "--etcd-name=default"
         env:
         - name: SENSU_BACKEND_CLUSTER_ADMIN_USERNAME
           value: "admin"
         - name: SENSU_BACKEND_CLUSTER_ADMIN_PASSWORD
           value: "P@ssw0rd"
-        - name: SENSU_BACKEND_API_URL
-          value: "http://localhost:8080"
-        - name: SENSU_BACKEND_DASHBOARD_HOST
-          value: "0.0.0.0"
-        - name: SENSU_BACKEND_DASHBOARD_PORT
-          value: "8081"
-        - name: SENSU_BACKEND_DEBUG
-          value: "true"
-        - name: SENSU_BACKEND_STATE_DIR
-          value: "/var/lib/sensu"
         ports:
         - containerPort: 8080
           name: api
-        - containerPort: 8081
+        - containerPort: 3000
           name: dashboard
+        - containerPort: 2379
+          name: etcd
+        - containerPort: 2380
+          name: peer
         volumeMounts:
-        - name: sensu-config
-          mountPath: /etc/sensu
         - name: sensu-data
           mountPath: /var/lib/sensu
-        - name: sensu-cache
-          mountPath: /var/cache/sensu
       - name: node-exporter
         image: prom/node-exporter:latest
         securityContext:
@@ -155,9 +177,6 @@ spec:
       - name: prometheus-config
         configMap:
           name: prometheus-config
-      - name: sensu-config
-        configMap:
-          name: sensu-checks
       - name: sensu-data
         persistentVolumeClaim:
           claimName: sensu-data
