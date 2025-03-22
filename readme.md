@@ -4,107 +4,108 @@ This project implements a cloud storage and data recovery system utilizing Kuber
 
 ## Features
 
-- **Cloud Infrastructure**: Configured with Kubernetes to manage a distributed storage system with 6 nodes (1 master and 5 worker nodes).
-- **Fault Tolerance**: Implemented RAID 5 and RAID 6 configurations to provide redundancy and recovery from node failures.
-- **Monitoring and Observability**: Integrated with **Sensu** for health monitoring and **Grafana** for visualizing system metrics (CPU, memory, disk usage, network traffic).
-- **Automated Data Recovery**: Data recovery is triggered automatically in case of node failure using RAID’s parity information.
-- **Real-Time Dashboards**: Prometheus is used for metrics collection, and Grafana displays system metrics in real-time.
+- **Cloud Infrastructure**: Configured with Kubernetes to manage a distributed storage system with 6 nodes (1 master and 5 worker nodes)
+- **Fault Tolerance**: Implemented RAID 5 and RAID 6 configurations to provide redundancy and recovery from node failures
+- **Monitoring and Observability**: Integrated with **Sensu** for health monitoring and **Grafana** for visualizing system metrics (CPU, memory, disk usage, network traffic)
+- **Automated Data Recovery**: Data recovery is triggered automatically in case of node failure using RAID's parity information
+- **Real-Time Dashboards**: Prometheus is used for metrics collection, and Grafana displays system metrics in real-time
 
 ## Setup Instructions
 
 ### 1. Clone the Repository
 
-Clone the repository to your local machine:
-
 ```bash
 git clone https://github.com/saadrehman171000/Cloud-Distributed-Storage-System.git
 cd Cloud-Distributed-Storage-System
+```
 
 ### 2. Kubernetes and Docker Setup
-Follow the steps below to set up the Kubernetes cluster using Docker:
 
-#### Create a Kubernetes Namespace:
+Create a Kubernetes namespace and set up the cluster:
 
 ```bash
+# Create namespace
 kubectl create namespace cloud-storage
 
-
-# Kubernetes and Docker Setup
-# Follow the steps below to set up the Kubernetes cluster using Docker:
-
-# Create a Kubernetes Namespace
-kubectl create namespace cloud-storage
-
-# Apply Kubernetes Deployments
+# Apply deployments
 kubectl apply -f kubernetes/cluster-deployment.yaml -n cloud-storage
 
-# Verify the Deployments
+# Verify setup
 kubectl get pods -n cloud-storage
 kubectl get deployments -n cloud-storage
+```
 
-# Sensu Monitoring Setup
-# Sensu is used to monitor the health of the nodes and the system’s status.
+### 3. Monitoring Setup
 
-# Apply Sensu Backend
+Set up Sensu monitoring and dashboards:
+
+```bash
+# Apply Sensu backend
 kubectl apply -f sensu/sensu-backend.yaml -n cloud-storage
 
-# Apply SSH Configuration
-# To enable secure remote access between nodes, apply the SSH configuration
+# Configure SSH access
 kubectl apply -f kubernetes/ssh-config.yaml -n cloud-storage
 
-# Apply Uchiwa Dashboard
-# Set up the Uchiwa dashboard for real-time visualization of Sensu events
+# Deploy Uchiwa dashboard
 kubectl apply -f sensu/uchiwa-dashboard.yaml -n cloud-storage
 
-# Verify All Services
-# Check the status of the services to ensure that everything is running correctly
+# Verify services
 kubectl get services -n cloud-storage
+```
 
-# RAID Configuration
-# The cloud storage system uses RAID 5 and RAID 6 to provide fault tolerance and automatic recovery of data in case of node failure.
+### 4. RAID Configuration
 
-# RAID Setup
-# Segment Image Data
-# Images are segmented into parts and stored across the worker nodes in a RAID array.
-# The following code segments an image:
+The system uses RAID 5 and RAID 6 for fault tolerance and automatic data recovery.
 
-python -c "
+#### Image Segmentation
+To segment and store images across worker nodes:
+
+```python
 from storage.raid_manager import RAIDManager
 raid = RAIDManager('storage_path')
 raid.segment_image('test_image.jpg')
-"
+```
 
-# RAID Recovery
-# The recovery process involves using the parity data from the remaining nodes to reconstruct data from a failed node.
+#### RAID Recovery Testing
+Test the RAID recovery functionality:
 
-# Run RAID Recovery Test
-# To test the RAID recovery logic, use the following command
+```bash
 python test_raid.py
+```
 
-# Monitoring Dashboards
-# 1. Grafana Dashboards
-# Grafana is used to visualize real-time system metrics such as:
-# CPU Usage, Memory Usage, Disk Usage, Network Traffic
+## Monitoring and Metrics
 
-# You can access the Grafana dashboard at http://localhost:31000 to monitor the system's performance.
+### Grafana Dashboards
+Monitor system metrics in real-time:
+- Access dashboard: http://localhost:31000
+- Metrics include: CPU Usage, Memory Usage, Disk Usage, Network Traffic
 
-# 2. Prometheus Metrics
-# Prometheus collects metrics from all nodes and provides insights into the system's status and RAID recovery process.
-# Access the Prometheus metrics at http://localhost:31001/graph.
+### Prometheus Metrics
+View detailed system metrics and RAID recovery status:
+- Access metrics: http://localhost:31001/graph
 
-# Testing
-# 1. Node Failure Simulation
-# To simulate node failure, run the following test:
+## Testing
+
+### Node Failure Simulation
+```bash
 python test_system.py
+```
+This simulates worker node failure and triggers the recovery process.
 
-# This test will simulate the failure of a worker node and initiate the data recovery process.
+### Performance Monitoring
+Track system performance metrics at:
+http://localhost:31000/d/performance/
+- Processing speed
+- Recovery time
+- System load
 
-# 2. Performance Metrics
-# Monitor the performance metrics, including processing speed, recovery time, and system load, using the Grafana dashboard at http://localhost:31000/d/performance/.
+## Contributing
 
-# Contributing
-# Feel free to fork this repository, submit issues, and create pull requests.
-# Contributions are always welcome to improve the system.
+We welcome contributions! Feel free to:
+- Fork the repository
+- Submit issues
+- Create pull requests
 
-# License
-# This project is licensed under the MIT License - see the LICENSE file for details.
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
