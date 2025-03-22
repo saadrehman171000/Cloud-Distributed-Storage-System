@@ -2,7 +2,8 @@ import numpy as np
 from PIL import Image
 import os
 import logging
-from prometheus_client import Counter, Histogram, start_http_server
+from prometheus_client import Counter, Histogram, CollectorRegistry
+from functools import wraps
 
 class RAIDManager:
     def __init__(self, storage_path):
@@ -10,16 +11,21 @@ class RAIDManager:
         os.makedirs(storage_path, exist_ok=True)
         self.logger = logging.getLogger(__name__)
         
-        # Metrics
+        # Create a unique registry for this instance
+        self.registry = CollectorRegistry()
+        
+        # Metrics with custom registry
         self.recovery_time = Histogram(
             'raid_recovery_duration_seconds',
             'Time spent recovering data',
-            ['type']
+            ['type'],
+            registry=self.registry
         )
         self.recovery_count = Counter(
             'raid_recovery_total',
             'Number of recovery operations',
-            ['type', 'success']
+            ['type', 'success'],
+            registry=self.registry
         )
         
     def segment_image(self, image_path):
@@ -79,7 +85,15 @@ class RAIDManager:
         
         return P, Q
         
-    @recovery_time.time()
+    @staticmethod
+    def time_recovery(func):
+        """Decorator to time recovery operations"""
+        def decorator(self, *args, **kwargs):
+            with self.recovery_time.labels(type=func.__name__).time():
+                return func(self, *args, **kwargs)
+        return decorator
+
+    @time_recovery
     def recover_raid5(self, available_segments, parity):
         """Recover data using RAID 5"""
         if len(available_segments) < 2:
@@ -96,7 +110,7 @@ class RAIDManager:
         self.recovery_count.labels(type='raid5', success='true').inc()
         return segments
         
-    @recovery_time.time()
+    @time_recovery
     def recover_raid6(self, available_segments, parities):
         """Recover data using RAID 6"""
         P, Q = parities

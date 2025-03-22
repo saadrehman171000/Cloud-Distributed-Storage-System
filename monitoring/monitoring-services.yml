@@ -35,6 +35,18 @@ spec:
       storage: 1Gi
 ---
 apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sensu-cache
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: monitoring-dashboard
@@ -43,30 +55,15 @@ spec:
   selector:
     app: monitoring
   ports:
-  - name: grafana
-    port: 3000
-    targetPort: 3001
-    nodePort: 31000
-  - name: prometheus
-    port: 9090
-    targetPort: 9090
-    nodePort: 31001
   - name: sensu-api
     port: 8080
     targetPort: 8080
-    nodePort: 31002
   - name: sensu-web
     port: 3000
     targetPort: 3000
-    nodePort: 31003
-  - name: sensu-etcd
-    port: 2379
-    targetPort: 2379
-    nodePort: 31004
-  - name: sensu-peer
-    port: 2380
-    targetPort: 2380
-    nodePort: 31005
+  - name: grafana
+    port: 3001
+    targetPort: 3001
   type: NodePort
 ---
 apiVersion: apps/v1
@@ -127,6 +124,7 @@ spec:
       - name: sensu
         image: sensu/sensu:latest
         securityContext:
+          privileged: true
           runAsUser: 1000
           runAsGroup: 1000
         command: ["/opt/sensu/bin/sensu-backend"]
@@ -135,6 +133,7 @@ spec:
         - "--state-dir=/var/lib/sensu"
         - "--log-level=debug"
         - "--api-listen-address=0.0.0.0:8080"
+        - "--api-url=http://0.0.0.0:8080"
         - "--dashboard-host=0.0.0.0"
         - "--dashboard-port=3000"
         - "--etcd-advertise-client-urls=http://localhost:2379"
@@ -160,6 +159,8 @@ spec:
         volumeMounts:
         - name: sensu-data
           mountPath: /var/lib/sensu
+        - name: sensu-cache
+          mountPath: /var/cache/sensu
       - name: node-exporter
         image: prom/node-exporter:latest
         securityContext:
@@ -181,4 +182,5 @@ spec:
         persistentVolumeClaim:
           claimName: sensu-data
       - name: sensu-cache
-        emptyDir: {} 
+        persistentVolumeClaim:
+          claimName: sensu-cache 

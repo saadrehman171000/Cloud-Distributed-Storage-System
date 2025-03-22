@@ -2,41 +2,26 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: worker-deployment
-  namespace: cloud-storage
+  namespace: monitoring
 spec:
-  replicas: 3  # Reduce replicas to match available resources
+  replicas: 5
   selector:
     matchLabels:
-      app: worker
       role: worker
   template:
     metadata:
       labels:
-        app: worker
         role: worker
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9090"
     spec:
       containers:
       - name: worker
-        image: python:3.9-slim
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "200m"
-        ports:
-        - containerPort: 9090
-          name: metrics
+        image: ubuntu:latest
+        command: ["/bin/sh", "-c", "sleep infinity"]
+        securityContext:
+          privileged: true
         volumeMounts:
-        - name: storage
+        - name: worker-storage
           mountPath: /storage
       volumes:
-      - name: storage
-        emptyDir: {}
-      - name: shared-data
-        persistentVolumeClaim:
-          claimName: shared-storage-claim 
+      - name: worker-storage
+        emptyDir: {} 
